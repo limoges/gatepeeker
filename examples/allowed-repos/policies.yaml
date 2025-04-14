@@ -1,0 +1,159 @@
+---
+# Taken from:
+# https://github.com/open-policy-agent/gatekeeper-library/blob/master/library/general/allowedrepos/template.yaml
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sallowedrepos
+  annotations:
+    metadata.gatekeeper.sh/title: "Allowed Repositories"
+    metadata.gatekeeper.sh/version: 1.0.2
+    description: >-
+      Requires container images to begin with a string from the specified list.
+      To prevent bypasses, ensure a '/' is added when specifying DockerHub repositories or custom registries.
+      If exact matches or glob-like syntax are preferred, use the k8sallowedreposv2 policy.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sAllowedRepos
+      validation:
+        # Schema for the `parameters` field
+        openAPIV3Schema:
+          type: object
+          properties:
+            repos:
+              description: The list of prefixes a container image is allowed to have.
+              type: array
+              items:
+                type: string
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sallowedrepos
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not strings.any_prefix_match(container.image, input.parameters.repos)
+          msg := sprintf("container <%v> has an invalid image repo <%v>, allowed repos are %v", [container.name, container.image, input.parameters.repos])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.initContainers[_]
+          not strings.any_prefix_match(container.image, input.parameters.repos)
+          msg := sprintf("initContainer <%v> has an invalid image repo <%v>, allowed repos are %v", [container.name, container.image, input.parameters.repos])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.ephemeralContainers[_]
+          not strings.any_prefix_match(container.image, input.parameters.repos)
+          msg := sprintf("ephemeralContainer <%v> has an invalid image repo <%v>, allowed repos are %v", [container.name, container.image, input.parameters.repos])
+        }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sAllowedRepos
+metadata:
+  name: repo-is-openpolicyagent
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces:
+      - "default"
+  parameters:
+    repos:
+      - "openpolicyagent/"
+---
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequiredlabels
+  annotations:
+    metadata.gatekeeper.sh/title: "Required Labels"
+    metadata.gatekeeper.sh/version: 1.1.2
+    description: >-
+      Requires resources to contain specified labels, with values matching
+      provided regular expressions.
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          type: object
+          properties:
+            message:
+              type: string
+            labels:
+              type: array
+              description: >-
+                A list of labels and values the object must specify.
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                    description: >-
+                      The required label.
+                  allowedRegex:
+                    type: string
+                    description: >-
+                      If specified, a regular expression the annotation's value
+                      must match. The value must contain at least one match for
+                      the regular expression.
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      code:
+      - engine: K8sNativeValidation
+        source:
+          validations:
+          - expression: '(has(variables.anyObject.metadata) && variables.params.labels.all(entry, has(variables.anyObject.metadata.labels) && entry.key in variables.anyObject.metadata.labels))'
+            messageExpression: '"missing required label, requires all of: " + variables.params.labels.map(entry, entry.key).join(", ")'
+          - expression: '(has(variables.anyObject.metadata) && variables.params.labels.all(entry, has(variables.anyObject.metadata.labels) && entry.key in variables.anyObject.metadata.labels && (!has(entry.allowedRegex) || string(variables.anyObject.metadata.labels[entry.key]).matches(string(entry.allowedRegex)))))'
+            message: "regex mismatch"
+      - engine: Rego
+        source:
+          rego: |
+            package k8srequiredlabels
+
+            get_message(parameters, _default) := _default {
+              not parameters.message
+            }
+
+            get_message(parameters, _) := parameters.message
+
+            violation[{"msg": msg, "details": {"missing_labels": missing}}] {
+              provided := {label | input.review.object.metadata.labels[label]}
+              required := {label | label := input.parameters.labels[_].key}
+              missing := required - provided
+              count(missing) > 0
+              def_msg := sprintf("you must provide labels: %v", [missing])
+              msg := get_message(input.parameters, def_msg)
+            }
+
+            violation[{"msg": msg}] {
+              value := input.review.object.metadata.labels[key]
+              expected := input.parameters.labels[_]
+              expected.key == key
+              # do not match if allowedRegex is not defined, or is an empty string
+              expected.allowedRegex != ""
+              not regex.match(expected.allowedRegex, value)
+              def_msg := sprintf("Label <%v: %v> does not satisfy allowed regex: %v", [key, value, expected.allowedRegex])
+              msg := get_message(input.parameters, def_msg)
+            }
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: must-have-pizza
+spec:
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+  parameters:
+    message: "All pods must have label of key `pizza` regardless of the label's value"
+    labels:
+      - key: pizza

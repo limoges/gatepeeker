@@ -1,0 +1,90 @@
+
+---
+apiVersion: templates.gatekeeper.sh/v1beta1
+kind: ConstraintTemplate
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: opa-gatekeeper-stage:templates.gatekeeper.sh/ConstraintTemplate:fleet-system/k8srequiredlabels
+  name: k8srequiredlabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredLabels
+      validation:
+        openAPIV3Schema:
+          properties:
+            labels:
+              items: string
+              type: array
+          type: object
+  targets:
+  - rego: |
+      package k8srequiredlabels
+
+      violation[{"msg": msg, "details": {"missing_labels": missing}}] {
+        provided := {label | input.review.object.metadata.labels[label]}
+        required := {label | label := input.parameters.labels[_]}
+        missing := required - provided
+        count(missing) > 0
+        msg := sprintf("you must provide labels: %v", [missing])
+      }
+
+      violation[{"msg": msg}] {
+        input.parameters.pciRequired
+        input.review.object.metadata.labels["pci"] != "true"
+        msg := "PCI compliance required: label 'pci' must be set to 'true'"
+      }
+    target: admission.k8s.gatekeeper.sh
+---
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/tracking-id: opa-gatekeeper-stage:constraints.gatekeeper.sh/K8sRequiredLabels:fleet-system/rfc-20-required-labels
+  name: rfc-20-required-labels
+spec:
+  match:
+    excludedNamespaces:
+    - kube-system
+    - fleet-system
+    - monitoring
+    - crossplane-system
+    - argocd
+    - cert-manager
+    - kubecost
+    - kuberhealthy
+    - dev-tooling
+    - karpenter
+    - keda
+    - default
+    - istio-system
+    - istio-ingress
+    - istio-egress
+    - istio-gateways
+    - infosecapps
+    - identity
+    - data-platform
+    kinds:
+    - apiGroups:
+      - ""
+      kinds:
+      - Pod
+      - Service
+    - apiGroups:
+      - extensions
+      - networking.k8s.io
+      kinds:
+      - Ingress
+    - apiGroups:
+      - extensions
+      - apps
+      kinds:
+      - Deployment
+  parameters:
+    labels:
+    - tribe
+    - squad
+    pciRequired: false

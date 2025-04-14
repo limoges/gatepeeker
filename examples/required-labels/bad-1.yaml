@@ -1,0 +1,36 @@
+---
+# Source: kafka-proxy/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-proxy
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "kafka-main.fleet.dev-pci-shared.eu-west-1.sumup.net,*.brokers.kafka-main.fleet.dev-pci-shared.eu-west-1.sumup.net"
+    external-dns.alpha.kubernetes.io/ttls: "60"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "9092"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "30"
+    # Specifies whether to use TLS for the backend traffic between the load balancer and the kubernetes pods.
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "tcp"
+    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: "App=kafka-proxy,Tribe=tribe-platform,Squad=squad-data-streaming,Namespace=data-experiment,Monitoring=enabled,allowed-groups=AwsDataPlatformEngineerSquadDev"
+    service.beta.kubernetes.io/aws-load-balancer-attributes: "access_logs.s3.enabled=true,access_logs.s3.bucket=fleet-nlb-logs-eu-west-1,access_logs.s3.prefix=load-balancer"
+    #service.beta.kubernetes.io/aws-load-balancer-proxy-protocol: '*'
+    # service.beta.kubernetes.io/aws-load-balancer-target-group-attributes: stickiness.enabled=true,stickiness.type=source_ip
+  labels:
+    app.kubernetes.io/name: kafka-proxy
+    app.kubernetes.io/instance: kafka-proxy
+    tribe: tribe-platform
+spec:
+  ports:
+    - appProtocol: tcp
+      name: kafka
+      port: 9092
+      protocol: TCP
+      targetPort: kafka
+  selector:
+    app.kubernetes.io/instance: kafka-proxy
+    app.kubernetes.io/name: kafka-proxy
+  type: LoadBalancer
