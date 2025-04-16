@@ -24,6 +24,10 @@ kos:
     preserve_import_paths: false
     labels:
       "org.opencontainers.image.source": "https://github.com/limoges/gatepeeker"
+      "org.opencontainers.image.description": "Validate your resources against policies before they hit the cluster"
+    annotations:
+      "org.opencontainers.image.source": "https://github.com/limoges/gatepeeker"
+      "org.opencontainers.image.description": "Validate your resources against policies before they hit the cluster"
 
 archives:
   - formats: [tar.gz]
