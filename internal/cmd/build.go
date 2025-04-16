@@ -54,6 +54,7 @@ func build(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(stdin) > 0 {
+		slog.Info("Reading from stdin", "size", len(stdin))
 		stdinBundle, err := bundle.ParsePolicies(stdin)
 		if err != nil {
 			return fmt.Errorf("failed to build bundle from yaml: %w", err)

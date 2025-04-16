@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"io"
 	"path/filepath"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/go-git/go-billy/v6/helper/iofs"
 	"github.com/go-git/go-billy/v6/memfs"
 	"github.com/go-git/go-billy/v6/util"
-	yaml "sigs.k8s.io/yaml"
 )
 
 // WriteFS writes a Bundle to the provide file-system.
@@ -64,12 +62,22 @@ func WriteCompressedArchive(b *Bundle, w io.Writer) error {
 }
 
 func WriteYAML(b *Bundle) ([]byte, error) {
-	var objects []json.Marshaler
+	var objects [][]byte
 	for _, obj := range b.templates {
-		objects = append(objects, obj)
+		objects = append(objects, obj.getRaw())
 	}
 	for _, obj := range b.constraints {
-		objects = append(objects, obj)
+		objects = append(objects, obj.getRaw())
 	}
-	return yaml.Marshal(objects)
+
+	var buf bytes.Buffer
+	for _, obj := range objects {
+		if _, err := buf.Write([]byte("---\n")); err != nil {
+			return nil, err
+		}
+		if _, err := buf.Write(obj); err != nil {
+			return nil, err
+		}
+	}
+	return buf.Bytes(), nil
 }

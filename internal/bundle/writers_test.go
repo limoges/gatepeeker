@@ -1,3 +1,27 @@
+package bundle_test
+
+import (
+	"testing"
+
+	"github.com/limoges/gatepeeker/internal/bundle"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestWriteYAMLEmpty(t *testing.T) {
+
+	b := bundle.New()
+
+	expected := ``
+
+	buf, err := bundle.WriteYAML(b)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, string(buf))
+}
+
+func TestWriteYAML(t *testing.T) {
+
+	policies := `
 ---
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
@@ -88,7 +112,18 @@ spec:
       - apiGroups: [""]
         kinds: ["Namespace"]
   parameters:
-    message: "All namespaces must have an `owner` label that points to your company username"
+    message: "All namespaces must have an owner label that points to your company username"
     labels:
       - key: owner
         allowedRegex: "^[a-zA-Z]+.agilebank.demo$"
+`
+
+	b, err := bundle.ParsePolicies([]byte(policies))
+	require.NoError(t, err)
+
+	expected := policies
+
+	buf, err := bundle.WriteYAML(b)
+	assert.NoError(t, err)
+	assert.YAMLEq(t, expected, string(buf))
+}

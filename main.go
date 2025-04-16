@@ -17,7 +17,7 @@ var (
 
 func main() {
 	root := cmd.BuildRoot()
-	root.Version = fmt.Sprintf("s commit=%s date=%s", version, commit, date)
+	root.Version = fmt.Sprintf("%s commit=%s date=%s", version, commit, date)
 
 	if err := root.Run(context.Background(), os.Args); err != nil {
 		slog.Error("terminated with error", "error", err)

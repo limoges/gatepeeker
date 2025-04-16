@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/open-policy-agent/frameworks/constraint/pkg/core/templates"
 	"github.com/open-policy-agent/gatekeeper/v3/apis"
 	"github.com/open-policy-agent/gatekeeper/v3/pkg/gator/reader"
+	yamlv3 "gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -23,10 +25,14 @@ func init() {
 
 type Constraint struct {
 	*unstructured.Unstructured
+	raw []byte
 }
 
-func newConstraint(obj *unstructured.Unstructured) *Constraint {
-	return &Constraint{obj}
+func newConstraint(obj *unstructured.Unstructured, raw []byte) *Constraint {
+	o := &Constraint{}
+	o.Unstructured = obj
+	o.raw = raw
+	return o
 }
 
 func (c *Constraint) resourceName() string {
@@ -42,16 +48,28 @@ func (c *Constraint) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.Unstructured)
 }
 
+func (c *Constraint) getRaw() []byte {
+	return c.raw
+}
+
 func (c *Constraint) GetObject() *unstructured.Unstructured {
 	return c.Unstructured
 }
 
 type ConstraintTemplate struct {
 	*templates.ConstraintTemplate
+	raw []byte
 }
 
-func newConstraintTemplate(t *templates.ConstraintTemplate) *ConstraintTemplate {
-	return &ConstraintTemplate{t}
+func newConstraintTemplate(t *templates.ConstraintTemplate, raw []byte) *ConstraintTemplate {
+	o := &ConstraintTemplate{}
+	o.ConstraintTemplate = t
+	o.raw = raw
+	return o
+}
+
+func (t *ConstraintTemplate) getRaw() []byte {
+	return t.raw
 }
 
 func (t *ConstraintTemplate) resourceName() string {
@@ -80,28 +98,50 @@ func New() *Bundle {
 	return new(Bundle)
 }
 
-func ParsePolicies(buf []byte) (*Bundle, error) {
-	objects, err := reader.ReadK8sResources(bytes.NewReader(buf))
-	if err != nil {
-		return nil, err
+func splitYamlDocuments(buf []byte) [][]byte {
+	// split on document start; forget about document stop
+	docs := bytes.Split(buf, []byte("---"))
+	var out [][]byte
+	// only keep the valid documents
+	for i, doc := range docs {
+		var node yamlv3.Node
+		err := yamlv3.Unmarshal(doc, &node)
+		if err != nil {
+			continue
+		}
+		if node.Kind != 1 {
+			continue
+		}
+		out = append(out, docs[i])
 	}
+	return out
+}
+
+func ParsePolicies(buf []byte) (*Bundle, error) {
+
+	documents := splitYamlDocuments(buf)
 
 	var (
 		constraints []*Constraint
 		templates   []*ConstraintTemplate
 	)
+	for _, document := range documents {
+		slog.Info("Document", "length", len(document), "docuemnt", string(document))
+		obj, err := reader.ReadUnstructured(document)
+		if err != nil {
+			return nil, err
+		}
 
-	for _, obj := range objects {
 		switch {
 		case reader.IsConstraint(obj):
-			constraints = append(constraints, newConstraint(obj))
+			constraints = append(constraints, newConstraint(obj, document))
 		case reader.IsTemplate(obj):
 			t, err := reader.ToTemplate(scheme, obj)
 			if err != nil {
 				panic(err)
 			}
 			t.SetGroupVersionKind(obj.GetObjectKind().GroupVersionKind()) // reader.ToTemplate doesn't seem to set GroupVersionKind
-			templates = append(templates, newConstraintTemplate(t))
+			templates = append(templates, newConstraintTemplate(t, document))
 		}
 	}
 
