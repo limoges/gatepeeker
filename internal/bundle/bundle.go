@@ -126,10 +126,11 @@ func ParsePolicies(buf []byte) (*Bundle, error) {
 		templates   []*ConstraintTemplate
 	)
 	for _, document := range documents {
-		slog.Info("Document", "length", len(document), "docuemnt", string(document))
+		slog.Debug("Document", "length", len(document))
 		obj, err := reader.ReadUnstructured(document)
 		if err != nil {
-			return nil, err
+			slog.Error("failed parse kubernetes resource", "error", err)
+			continue
 		}
 
 		switch {
