@@ -9,13 +9,12 @@ require (
 	k8s.io/api v0.32.3
 	k8s.io/apiextensions-apiserver v0.32.3 // indirect
 	k8s.io/apimachinery v0.32.3
-	k8s.io/client-go v0.32.3
+	k8s.io/client-go v0.32.3 // indirect
 	sigs.k8s.io/controller-runtime v0.20.4 // indirect
 	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
-	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/go-git/go-billy/v6 v6.0.0-20250401194413-70ef9bfef61f
 	github.com/hairyhenderson/go-fsimpl v0.2.5
 	github.com/open-policy-agent/frameworks/constraint v0.0.0-20250410204853-d53cea840470
@@ -100,6 +99,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
+	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
