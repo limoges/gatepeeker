@@ -22,6 +22,8 @@ kos:
       - "{{.Version}}"
     bare: true
     preserve_import_paths: false
+    labels:
+      "org.opencontainers.image.source": "https://github.com/limoges/gatepeeker"
 
 archives:
   - formats: [tar.gz]
