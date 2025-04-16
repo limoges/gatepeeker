@@ -20,6 +20,8 @@ kos:
       - latest
       - "{{.Tag}}"
       - "{{.Version}}"
+    bare: true
+    preserve_import_paths: false
 
 archives:
   - formats: [tar.gz]
