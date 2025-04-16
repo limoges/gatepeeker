@@ -25,7 +25,7 @@ var (
 	flagPolicies = &cli.StringSliceFlag{
 		Name:  "policies",
 		Usage: "A location to load policies from",
-		Value: []string{"policies.yaml"},
+		Value: []string{},
 	}
 	flagVerbose = &cli.BoolFlag{
 		Name:  "verbose",
