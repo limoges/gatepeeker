@@ -72,7 +72,8 @@ func WriteYAML(b *Bundle) ([]byte, error) {
 
 	var buf bytes.Buffer
 	for _, obj := range objects {
-		if _, err := buf.Write([]byte("---\n")); err != nil {
+		// we don't write newline because raw may contains it
+		if _, err := buf.Write([]byte("---")); err != nil {
 			return nil, err
 		}
 		if _, err := buf.Write(obj); err != nil {
