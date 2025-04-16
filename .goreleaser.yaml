@@ -10,6 +10,16 @@ builds:
     goarch:
       - amd64
       - arm64
+kos:
+  - repositories:
+      - ghcr.io/limoges/gatepeeker
+    platforms:
+      - linux/arm64
+      - linux/amd64
+    tags:
+      - latest
+      - "{{.Tag}}"
+      - "{{.Version}}"
 
 archives:
   - formats: [tar.gz]
