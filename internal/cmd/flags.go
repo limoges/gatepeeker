@@ -226,11 +226,12 @@ func readSource(s string) ([]byte, error) {
 
 func readFromStdin() ([]byte, error) {
 
-	fi, err := os.Stdin.Stat()
+	info, err := os.Stdin.Stat()
 	if err != nil {
 		return nil, err
 	}
-	if fi.Size() > 0 {
+	if info.Mode()&os.ModeNamedPipe != 0 {
+		slog.Info("Reading input from stdin")
 		return io.ReadAll(os.Stdin)
 	}
 	return nil, nil

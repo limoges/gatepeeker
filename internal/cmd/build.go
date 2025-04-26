@@ -53,6 +53,7 @@ func build(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to read stdin: %w", err)
 	}
 
+	slog.Info("Reading from stdin", "size", len(stdin))
 	if len(stdin) > 0 {
 		slog.Info("Reading from stdin", "size", len(stdin))
 		stdinBundle, err := bundle.ParsePolicies(stdin)
